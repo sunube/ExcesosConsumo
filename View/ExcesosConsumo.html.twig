@@ -1,0 +1,474 @@
+{% extends "Master/MenuTemplate.html.twig" %}
+
+{% block body %}
+<div class="container-fluid mt-3">
+
+    {# ══════ MENSAJE DE ESTADO ══════ #}
+    {% if fsc.mensaje %}
+    <div class="alert alert-{{ fsc.tipoMensaje }} alert-dismissible fade show" role="alert">
+        <i class="fas fa-{% if fsc.tipoMensaje == 'success' %}check-circle{% elseif fsc.tipoMensaje == 'warning' %}exclamation-triangle{% else %}times-circle{% endif %}"></i>
+        {{ fsc.mensaje }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    </div>
+    {% endif %}
+
+    {# ══════ ESTADO: UPLOAD (formulario inicial) ══════ #}
+    {% if fsc.estado == 'upload' %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-phone-volume mr-2"></i> Excesos de Consumo Telefónico</h5>
+        </div>
+        <div class="card-body">
+            <form action="ExcesosConsumo" method="post" enctype="multipart/form-data" id="formProcesar">
+                {{ formToken() }}
+                <input type="hidden" name="action" value="procesar_ficheros"/>
+
+                <div class="row">
+                    {# Configuración #}
+                    <div class="col-lg-6">
+                        <h6 class="text-muted mb-3"><i class="fas fa-cog mr-1"></i> Configuración</h6>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Tipo de documento</label>
+                            <div class="col-sm-8">
+                                <select name="tipodocumento" class="form-control">
+                                    <option value="AlbaranCliente" {{ fsc.config.tipodocumento == 'AlbaranCliente' ? 'selected' : '' }}>Albarán</option>
+                                    <option value="FacturaCliente" {{ fsc.config.tipodocumento == 'FacturaCliente' ? 'selected' : '' }}>Factura</option>
+                                    <option value="PedidoCliente" {{ fsc.config.tipodocumento == 'PedidoCliente' ? 'selected' : '' }}>Pedido</option>
+                                    <option value="PresupuestoCliente" {{ fsc.config.tipodocumento == 'PresupuestoCliente' ? 'selected' : '' }}>Presupuesto</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Concepto</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="concepto" class="form-control" value="{{ fsc.config.concepto }}" placeholder="EXCESO CONSUMO TELEFONÍA MÓVIL"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Mes</label>
+                            <div class="col-sm-8">
+                                <select name="mes" class="form-control">
+                                    <option value="">-- Sin especificar --</option>
+                                    <option value="ENERO" {{ fsc.config.mes == 'ENERO' ? 'selected' : '' }}>Enero</option>
+                                    <option value="FEBRERO" {{ fsc.config.mes == 'FEBRERO' ? 'selected' : '' }}>Febrero</option>
+                                    <option value="MARZO" {{ fsc.config.mes == 'MARZO' ? 'selected' : '' }}>Marzo</option>
+                                    <option value="ABRIL" {{ fsc.config.mes == 'ABRIL' ? 'selected' : '' }}>Abril</option>
+                                    <option value="MAYO" {{ fsc.config.mes == 'MAYO' ? 'selected' : '' }}>Mayo</option>
+                                    <option value="JUNIO" {{ fsc.config.mes == 'JUNIO' ? 'selected' : '' }}>Junio</option>
+                                    <option value="JULIO" {{ fsc.config.mes == 'JULIO' ? 'selected' : '' }}>Julio</option>
+                                    <option value="AGOSTO" {{ fsc.config.mes == 'AGOSTO' ? 'selected' : '' }}>Agosto</option>
+                                    <option value="SEPTIEMBRE" {{ fsc.config.mes == 'SEPTIEMBRE' ? 'selected' : '' }}>Septiembre</option>
+                                    <option value="OCTUBRE" {{ fsc.config.mes == 'OCTUBRE' ? 'selected' : '' }}>Octubre</option>
+                                    <option value="NOVIEMBRE" {{ fsc.config.mes == 'NOVIEMBRE' ? 'selected' : '' }}>Noviembre</option>
+                                    <option value="DICIEMBRE" {{ fsc.config.mes == 'DICIEMBRE' ? 'selected' : '' }}>Diciembre</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Multiplicador</label>
+                            <div class="col-sm-8">
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">&times;</span>
+                                    </div>
+                                    <input type="number" step="0.01" min="1" name="multiplicador" class="form-control" value="{{ fsc.config.multiplicador }}"/>
+                                </div>
+                                <small class="form-text text-muted">El total de consumo se multiplica por este valor</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Serie</label>
+                            <div class="col-sm-8">
+                                <select name="codserie" class="form-control">
+                                    {% for serie in fsc.series %}
+                                    <option value="{{ serie.codserie }}" {{ fsc.config.codserie == serie.codserie ? 'selected' : '' }}>
+                                        {{ serie.codserie }} - {{ serie.descripcion }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Almacén</label>
+                            <div class="col-sm-8">
+                                <select name="codalmacen" class="form-control">
+                                    <option value="">-- Por defecto --</option>
+                                    {% for almacen in fsc.almacenes %}
+                                    <option value="{{ almacen.codalmacen }}" {{ fsc.config.codalmacen == almacen.codalmacen ? 'selected' : '' }}>
+                                        {{ almacen.codalmacen }} - {{ almacen.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Forma de pago</label>
+                            <div class="col-sm-8">
+                                <select name="codpago" class="form-control">
+                                    <option value="">-- Del cliente --</option>
+                                    {% for fp in fsc.formasPago %}
+                                    <option value="{{ fp.codpago }}" {{ fsc.config.codpago == fp.codpago ? 'selected' : '' }}>
+                                        {{ fp.codpago }} - {{ fp.descripcion }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">IVA %</label>
+                            <div class="col-sm-8">
+                                <input type="number" step="0.01" min="0" name="iva" class="form-control" value="{{ fsc.config.iva }}"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Subida de ficheros #}
+                    <div class="col-lg-6">
+                        <h6 class="text-muted mb-3"><i class="fas fa-file-upload mr-1"></i> Ficheros</h6>
+
+                        <div class="form-group">
+                            <label><strong>Fichero de clientes</strong> <small class="text-muted">(clientes.csv)</small></label>
+                            {% if fsc.clientesCsvGuardado %}
+                            <div class="alert alert-success py-2 px-3 mb-2">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                <strong>clientes.csv guardado</strong> en el servidor
+                                <small class="text-muted ml-2">({{ fsc.clientesCsvFecha }})</small>
+                                <br/><small>Si subes uno nuevo, se reemplazará el actual.</small>
+                            </div>
+                            {% endif %}
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" name="fichero_clientes[]" id="ficheroClientes" accept=".csv" onchange="updateFileLabel(this)"/>
+                                <label class="custom-file-label" for="ficheroClientes" data-browse="Examinar">
+                                    {% if fsc.clientesCsvGuardado %}
+                                        Subir nuevo clientes.csv (opcional)...
+                                    {% else %}
+                                        Seleccionar clientes.csv...
+                                    {% endif %}
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">CSV con columnas: Id, Cliente, Número, etc. Relaciona teléfonos con nombres.
+                                {% if fsc.clientesCsvGuardado %}<strong>Se usará el guardado si no subes uno nuevo.</strong>{% endif %}
+                            </small>
+                        </div>
+
+                        <div class="form-group mt-4">
+                            <label><strong>Ficheros de consumo</strong> <small class="text-muted">(VOD .csv y/o CDR .txt)</small></label>
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" name="ficheros_consumo[]" id="ficherosConsumo" accept=".csv,.txt" multiple onchange="updateFileLabel(this)"/>
+                                <label class="custom-file-label" for="ficherosConsumo" data-browse="Examinar">Seleccionar ficheros de consumo...</label>
+                            </div>
+                            <small class="form-text text-muted">Puedes seleccionar múltiples ficheros. Formatos: VOD (csv) y CDR SuNube (txt).</small>
+                        </div>
+
+                        <div class="card bg-light mt-4">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fas fa-info-circle text-info mr-1"></i> Cómo funciona</h6>
+                                <ol class="mb-0 small">
+                                    <li>Sube el <strong>clientes.csv</strong> para relacionar teléfonos con nombres (se guarda en el servidor)</li>
+                                    <li>Sube los <strong>ficheros de consumo</strong> (VOD y/o CDR)</li>
+                                    <li>El plugin busca cada cliente en FacturaScripts por nombre, teléfono, NIF u observaciones</li>
+                                    <li>Revisa la <strong>previsualización</strong> antes de confirmar</li>
+                                    <li>Se crea un documento por cada cliente con exceso</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr/>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-search mr-2"></i> Procesar y Previsualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ══════ ESTADO: PREVIEW (previsualización) ══════ #}
+    {% if fsc.estado == 'preview' %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-eye mr-2"></i> Previsualización</h5>
+            <a href="{{ fsc.url() }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left mr-1"></i> Volver
+            </a>
+        </div>
+        <div class="card-body p-0">
+
+            {# Resumen #}
+            <div class="row no-gutters border-bottom p-3 bg-light">
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">Clientes</div>
+                    <div class="h4 mb-0 font-weight-bold">{{ fsc.resumen.total_clientes }}</div>
+                </div>
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">Encontrados</div>
+                    <div class="h4 mb-0 font-weight-bold text-success">{{ fsc.resumen.clientes_encontrados }}</div>
+                </div>
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">No encontrados</div>
+                    <div class="h4 mb-0 font-weight-bold text-danger">{{ fsc.resumen.clientes_no_encontrados }}</div>
+                </div>
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">Registros</div>
+                    <div class="h4 mb-0 font-weight-bold">{{ fsc.resumen.total_registros }}</div>
+                </div>
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">Total consumo</div>
+                    <div class="h4 mb-0 font-weight-bold">{{ fsc.resumen.total_consumo|number_format(2, ',', '.') }} &euro;</div>
+                </div>
+                <div class="col-md-2 text-center p-2">
+                    <div class="text-muted small">Total a facturar (&times;{{ fsc.resumen.multiplicador }})</div>
+                    <div class="h4 mb-0 font-weight-bold text-danger">{{ fsc.resumen.total_facturar|number_format(2, ',', '.') }} &euro;</div>
+                </div>
+            </div>
+
+            {# Concepto que se usará #}
+            <div class="p-3 bg-white border-bottom">
+                <strong>Concepto:</strong>
+                <span class="badge badge-primary p-2" style="font-size: 14px;">{{ fsc.config.getConceptoCompleto() }}</span>
+                <span class="ml-3"><strong>Tipo doc.:</strong>
+                    {% if fsc.config.tipodocumento == 'AlbaranCliente' %}Albarán
+                    {% elseif fsc.config.tipodocumento == 'FacturaCliente' %}Factura
+                    {% elseif fsc.config.tipodocumento == 'PedidoCliente' %}Pedido
+                    {% else %}Presupuesto{% endif %}
+                </span>
+                <span class="ml-3"><strong>Serie:</strong> {{ fsc.config.codserie }}</span>
+                <span class="ml-3"><strong>IVA:</strong> {{ fsc.config.iva }}%</span>
+            </div>
+
+            {# Tabla de clientes #}
+            <form action="ExcesosConsumo" method="post" id="formConfirmar">
+                {{ formToken() }}
+                <input type="hidden" name="action" value="confirmar_documentos"/>
+                <input type="hidden" name="preview_data" id="previewData" value="{{ fsc.getPreviewDataForPost()|e('html_attr') }}"/>
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="20%">Cliente (CSV)</th>
+                                <th width="20%">Cliente FacturaScripts</th>
+                                <th width="15%">Teléfonos</th>
+                                <th width="10%" class="text-right">Consumo</th>
+                                <th width="10%" class="text-right">A facturar</th>
+                                <th width="10%">Registros</th>
+                                <th width="10%">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in fsc.preview %}
+                            <tr class="{{ item.encontrado ? '' : 'table-warning' }}">
+                                <td>{{ loop.index }}</td>
+                                <td>
+                                    <strong>{{ item.nombre_csv }}</strong>
+                                </td>
+                                <td>
+                                    {% if item.encontrado %}
+                                        <span class="text-success"><i class="fas fa-check-circle mr-1"></i></span>
+                                        <strong>{{ item.nombre_fs }}</strong>
+                                        <br/><small class="text-muted">{{ item.codcliente }} &mdash; {{ item.cifnif }}</small>
+                                    {% else %}
+                                        <span class="text-danger"><i class="fas fa-times-circle mr-1"></i> No encontrado</span>
+                                        <br/>
+                                        <input type="text" class="form-control form-control-sm mt-1"
+                                            name="codcliente_{{ loop.index0 }}"
+                                            placeholder="Código de cliente..."
+                                            title="Introduce el código del cliente manualmente"/>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for phone in item.phones %}
+                                        <span class="badge badge-secondary">{{ phone }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="text-right">{{ item.total_consumo|number_format(2, ',', '.') }} &euro;</td>
+                                <td class="text-right font-weight-bold text-danger">{{ item.total_facturar|number_format(2, ',', '.') }} &euro;</td>
+                                <td>
+                                    <a href="#" class="badge badge-info" onclick="toggleDetail('detail{{ loop.index0 }}'); return false;">
+                                        {{ item.lineas|length }} reg. <i class="fas fa-chevron-up ml-1" id="icon{{ loop.index0 }}"></i>
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if item.encontrado %}
+                                        <span class="badge badge-success">OK</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">Manual</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr id="detail{{ loop.index0 }}">
+                                <td colspan="8" class="p-0">
+                                    <div class="p-3 bg-light">
+                                        <strong class="small text-muted">Detalle de consumos:</strong>
+                                        <div class="table-responsive mt-2" style="max-height: 300px; overflow-y: auto;">
+                                            <table class="table table-sm table-bordered mb-0 small">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Operador</th>
+                                                        <th>Tipo</th>
+                                                        <th>Teléfono</th>
+                                                        <th>Fecha</th>
+                                                        <th>Hora</th>
+                                                        <th>Destino</th>
+                                                        <th>Duración</th>
+                                                        <th>Descripción</th>
+                                                        <th class="text-right">Coste</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for line in item.lineas %}
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge badge-{{ line.operator == 'VOD' ? 'primary' : 'danger' }}">{{ line.operator }}</span>
+                                                        </td>
+                                                        <td>{{ line.type }}</td>
+                                                        <td>{{ line.phone }}</td>
+                                                        <td>{{ line.date }}</td>
+                                                        <td>{{ line.time }}</td>
+                                                        <td>{{ line.destination is defined and line.destination ? line.destination : '&mdash;' }}</td>
+                                                        <td>
+                                                            {% if line.duration is defined and line.duration > 0 %}
+                                                                {% set totalSec = line.duration %}
+                                                                {% set mins = (totalSec / 60)|round(0, 'floor') %}
+                                                                {% set secs = totalSec - (mins * 60) %}
+                                                                {{ mins > 0 ? mins ~ 'min ' : '' }}{{ secs }}s
+                                                            {% else %}
+                                                                &mdash;
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>{{ line.description is defined and line.description ? line.description : '&mdash;' }}</td>
+                                                        <td class="text-right">{{ line.cost|number_format(4, ',', '.') }} &euro;</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="mt-2">
+                                            <strong class="small text-muted">Observaciones del documento:</strong>
+                                            <pre class="small bg-white p-2 border rounded mt-1" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">{{ item.observaciones }}</pre>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer text-center">
+                    <a href="{{ fsc.url() }}" class="btn btn-secondary mr-3">
+                        <i class="fas fa-times mr-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Se van a crear {{ fsc.preview|length }} documentos. ¿Continuar?')">
+                        <i class="fas fa-check mr-2"></i> Confirmar y Crear Documentos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ══════ ESTADO: DONE (documentos creados) ══════ #}
+    {% if fsc.estado == 'done' %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-check-circle mr-2"></i> Documentos Creados</h5>
+        </div>
+        <div class="card-body">
+            {% if fsc.documentosCreados|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Código</th>
+                            <th>Cliente</th>
+                            <th class="text-right">Total</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in fsc.documentosCreados %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ doc.codigo }}</strong></td>
+                            <td>{{ doc.cliente }}</td>
+                            <td class="text-right font-weight-bold">{{ doc.total|number_format(2, ',', '.') }} &euro;</td>
+                            <td>
+                                {% if doc.tipo == 'AlbaranCliente' %}
+                                    <a href="EditAlbaranCliente?code={{ doc.id }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-eye mr-1"></i> Ver albarán
+                                    </a>
+                                {% elseif doc.tipo == 'FacturaCliente' %}
+                                    <a href="EditFacturaCliente?code={{ doc.id }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-eye mr-1"></i> Ver factura
+                                    </a>
+                                {% elseif doc.tipo == 'PedidoCliente' %}
+                                    <a href="EditPedidoCliente?code={{ doc.id }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-eye mr-1"></i> Ver pedido
+                                    </a>
+                                {% else %}
+                                    <a href="EditPresupuestoCliente?code={{ doc.id }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="fas fa-eye mr-1"></i> Ver presupuesto
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p>No se creó ningún documento.</p>
+            </div>
+            {% endif %}
+
+            <div class="text-center mt-3">
+                <a href="{{ fsc.url() }}" class="btn btn-primary">
+                    <i class="fas fa-redo mr-1"></i> Procesar más ficheros
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function updateFileLabel(input) {
+    var label = input.nextElementSibling;
+    if (input.files.length > 1) {
+        label.textContent = input.files.length + ' ficheros seleccionados';
+    } else if (input.files.length === 1) {
+        label.textContent = input.files[0].name;
+    }
+}
+function toggleDetail(id) {
+    var row = document.getElementById(id);
+    var icon = document.getElementById(id.replace('detail', 'icon'));
+    if (row) {
+        if (row.style.display === 'none') {
+            row.style.display = '';
+            if (icon) { icon.className = 'fas fa-chevron-up ml-1'; }
+        } else {
+            row.style.display = 'none';
+            if (icon) { icon.className = 'fas fa-chevron-down ml-1'; }
+        }
+    }
+}
+</script>
+{% endblock %}
